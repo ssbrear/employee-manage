@@ -1,7 +1,6 @@
 const inquirer = require("inquirer");
 const mysql = require("mysql");
 const cTable = require("console.table");
-const { inherits } = require("util");
 require("dotenv").config();
 
 const connection = mysql.createConnection({
@@ -96,7 +95,12 @@ async function addEntries() {
     });
     connection.query(
       "INSERT INTO employee SET ?",
-      { first_name: first_name, last_name: last_name, role_id: role_id, manager_id: manager_id },
+      {
+        first_name: first_name,
+        last_name: last_name,
+        role_id: role_id,
+        manager_id: manager_id,
+      },
       (err) => {
         if (err) throw err;
       }
@@ -107,55 +111,70 @@ async function addEntries() {
 }
 
 async function viewEntries() {
-  const {category} = await inquirer.prompt({
-    type: 'list',
-    name: 'category',
-    message: 'Which category would you like to view the entries of?',
-    choices: [
-      'Departments',
-      'Roles',
-      'Employees',
-      'Combined'
-    ]
-  })
+  const { category } = await inquirer.prompt({
+    type: "list",
+    name: "category",
+    message: "Which category would you like to view the entries of?",
+    choices: ["Departments", "Roles", "Employees", "Combined"],
+  });
   switch (category) {
-    case 'Departments':
-      connection.query(
-        "SELECT * FROM department", (err, res) => {
-          if (err)
-            throw err;
-          console.table(res);
-        }
-      )
+    case "Departments":
+      connection.query("SELECT * FROM department", (err, res) => {
+        if (err) throw err;
+        console.table(res);
+      });
       break;
-    case 'Roles':
-      connection.query(
-        "SELECT * FROM roles", (err, res) => {
-          if (err)
-            throw err;
-          console.table(res);
-        }
-      )
+    case "Roles":
+      connection.query("SELECT * FROM roles", (err, res) => {
+        if (err) throw err;
+        console.table(res);
+      });
       break;
-    case 'Employees':
-      connection.query(
-        "SELECT * FROM employee", (err, res) => {
-          if (err)
-            throw err;
-          console.table(res);
-        }
-      )
+    case "Employees":
+      connection.query("SELECT * FROM employee", (err, res) => {
+        if (err) throw err;
+        console.table(res);
+      });
       break;
-    case 'Combined':
+    case "Combined":
       connection.query(
-        "SELECT employee.last_name, employee.first_name, roles.title, department.department, roles.salary FROM ((department INNER JOIN roles ON department.id = roles.department_id) INNER JOIN employee ON employee.role_id = roles.id)", (err, res) => {
-          if (err)
-            throw err;
+        "SELECT employee.last_name, employee.first_name, roles.title, department.department, roles.salary FROM ((department INNER JOIN roles ON department.id = roles.department_id) INNER JOIN employee ON employee.role_id = roles.id)",
+        (err, res) => {
+          if (err) throw err;
           console.table(res);
         }
-      )
+      );
   }
-  init();
+  setTimeout(init, 2500);
 }
 
-function updateEntries() {}
+function updateEntries() {
+  let names = [];
+  connection.query(
+    "SELECT employee.first_name FROM employee",
+    async (err, res) => {
+      if (err) throw err;
+      res.forEach((element) => {
+        names.push(element.first_name);
+      });
+      const { employee } = await inquirer.prompt({
+        type: "list",
+        name: "employee",
+        message: "Which employee's role is to be changed?",
+        choices: names,
+      });
+      const { newRole } = await inquirer.prompt({
+        type: "number",
+        name: "newRole",
+        message: `What is the new role ID that is to be assigned to ${employee}?`,
+      });
+      connection.query(
+        `UPDATE employee SET role_id = ${newRole} WHERE first_name = '${employee}'`, (err) => {
+          if (err) throw err;
+          console.log("Database successfully updated!");
+          init();
+        }
+      );
+    }
+  );
+}
